@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stayfolio 콘텐츠 생성기</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --surface-raised: #fafafa;
+    --border: #e2e2e7;
+    --border-light: #eeeeef;
+    --text: #1d1d1f;
+    --text-sub: #48484a;
+    --text-muted: #86868b;
+    --text-hint: #aeaeb2;
+    --accent: #5856D6;
+    --accent-hover: #4a48c4;
+    --accent-light: #ededfb;
+    --header-bg: #1d1d2f;
+    --header-text: #ffffff;
+    --header-sub: #a0a0b8;
+    --green-bg: #e8f5e0;
+    --green-text: #2d6a0f;
+    --blue-bg: #e3eefb;
+    --blue-text: #1a5da8;
+    --red-bg: #fce8e8;
+    --red-text: #a32d2d;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Dark Header */
+  .top-header {
+    background: var(--header-bg);
+    padding: 2rem 1.5rem;
+    text-align: center;
+  }
+  .top-header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--header-text);
+    letter-spacing: -0.3px;
+  }
+  .top-header p {
+    font-size: 13px;
+    color: var(--header-sub);
+    margin-top: 6px;
+  }
+
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+  }
+
+  /* API Key Bar */
+  .apikey-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .apikey-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-sub);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .apikey-bar input[type="password"], .apikey-bar input[type="text"] {
+    flex: 1;
+    font-family: 'Menlo','Monaco',monospace;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    background: var(--surface-raised);
+    color: var(--text);
+    outline: none;
+  }
+  .apikey-bar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88,86,214,0.1); }
+  .apikey-bar select {
+    font-size: 13px;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 28px 8px 10px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2386868b'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+  }
+  .apikey-bar select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88,86,214,0.1); }
+  .key-status { font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .key-status.ok { color: var(--green-text); }
+  .key-status.error { color: var(--red-text); }
+  .apikey-hint {
+    font-size: 11px;
+    color: var(--text-hint);
+    margin-top: -8px;
+    margin-bottom: 1.25rem;
+    padding-left: 4px;
+  }
+  .apikey-hint a { color: var(--blue-text); text-decoration: none; }
+  .apikey-hint a:hover { text-decoration: underline; }
+
+  .btn-show {
+    font-size: 12px;
+    font-family: inherit;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-show:hover { background: var(--surface-raised); color: var(--text-sub); }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .card-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-sub);
+    margin-bottom: 12px;
+  }
+
+  /* Inputs */
+  textarea, input[type="text"], input[type="password"] {
+    width: 100%;
+    font-size: 14px;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    background: var(--surface-raised);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  textarea:focus, input[type="text"]:focus, input[type="password"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88,86,214,0.1);
+  }
+  textarea { min-height: 80px; resize: vertical; line-height: 1.7; }
+  .hint { font-size: 12px; color: var(--text-hint); margin-top: 6px; line-height: 1.5; }
+  .hint a { color: var(--blue-text); text-decoration: none; }
+  .hint a:hover { text-decoration: underline; }
+
+  .row { display: flex; gap: 10px; align-items: center; }
+  .row input { flex: 1; }
+
+  /* Buttons */
+  .btn {
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 600;
+    padding: 9px 20px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    box-shadow: 0 1px 3px rgba(88,86,214,0.3);
+  }
+  .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    font-weight: 500;
+    border-color: transparent;
+  }
+  .btn-ghost:hover { background: var(--border-light); color: var(--text-sub); }
+
+  /* Hotel input area */
+  .hotel-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .hotel-input-row input[type="text"] { flex: 1; }
+  .file-upload-link {
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    padding: 0;
+  }
+  .file-upload-link:hover { text-decoration: underline; }
+  .file-area {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-light);
+    display: none;
+  }
+  .file-area.open { display: block; }
+  .file-area input[type="file"] { font-size: 13px; }
+  .file-status { font-size: 12px; color: var(--text-hint); margin-top: 4px; }
+
+  /* Options row */
+  .options-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-light);
+  }
+  .options-row label {
+    font-size: 13px;
+    color: var(--text-sub);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .options-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .options-hint {
+    font-size: 11px;
+    color: var(--text-hint);
+  }
+
+  /* Toggle sections */
+  .section-toggle {
+    font-size: 13px;
+    color: var(--text-muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-toggle:hover { color: var(--text-sub); }
+  .section-toggle .arrow {
+    display: inline-block;
+    transition: transform 0.15s;
+    font-size: 10px;
+  }
+  .section-toggle .arrow.open { transform: rotate(90deg); }
+  .collapse-area { display: none; margin-top: 10px; }
+  .collapse-area.open { display: block; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 99px;
+    letter-spacing: 0.2px;
+  }
+  .badge-wait  { background: var(--border-light); color: var(--text-muted); }
+  .badge-run   { background: var(--blue-bg); color: var(--blue-text); }
+  .badge-done  { background: var(--green-bg); color: var(--green-text); }
+  .badge-error { background: var(--red-bg); color: var(--red-text); }
+
+  /* Progress */
+  .progress-wrap { margin: 8px 0 14px; }
+  .progress-track {
+    height: 4px;
+    background: var(--border-light);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+  .progress-text { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+
+  /* Results */
+  .result-row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-name {
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 140px;
+    flex-shrink: 0;
+    line-height: 1.5;
+    padding-top: 2px;
+    color: var(--text);
+  }
+  .result-status { min-width: 60px; flex-shrink: 0; padding-top: 2px; }
+  .result-preview {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    overflow: hidden;
+  }
+  .result-preview .simple-desc {
+    font-style: italic;
+    color: var(--text-sub);
+    font-size: 13px;
+    margin-bottom: 3px;
+  }
+  .result-preview .error-msg { color: var(--red-text); font-size: 13px; }
+
+  /* Result tabs */
+  .result-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 14px;
+  }
+  .result-tab {
+    font-size: 13px;
+    padding: 8px 16px;
+    cursor: pointer;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+    user-select: none;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    font-family: inherit;
+  }
+  .result-tab:hover { color: var(--text-sub); }
+  .result-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* Content cards */
+  .content-view { display: none; }
+  .content-view.active { display: block; }
+  .content-card {
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .content-card:last-child { margin-bottom: 0; }
+  .content-card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--surface-raised);
+  }
+  .content-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .content-card-simple {
+    font-size: 13px;
+    font-style: italic;
+    color: var(--accent);
+    margin-top: 4px;
+  }
+  .content-card-body {
+    padding: 16px 18px;
+  }
+  .content-card-desc {
+    font-size: 14px;
+    color: var(--text-sub);
+    line-height: 1.8;
+    margin-bottom: 12px;
+  }
+  .content-card-desc:last-child { margin-bottom: 0; }
+  .content-card-specials {
+    border-top: 1px solid var(--border-light);
+    padding-top: 14px;
+    margin-top: 14px;
+  }
+  .content-special {
+    margin-bottom: 12px;
+  }
+  .content-special:last-child { margin-bottom: 0; }
+  .content-special-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .content-special-desc {
+    font-size: 13px;
+    color: var(--text-sub);
+    line-height: 1.7;
+  }
+  .content-empty {
+    text-align: center;
+    padding: 2.5rem 0;
+    color: var(--text-hint);
+    font-size: 14px;
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 4px 0;
+    margin-bottom: 0.75rem;
+  }
+  .summary { font-size: 13px; color: var(--text-muted); margin-left: 4px; }
+
+  /* Settings panel */
+  .settings-section { margin-bottom: 1.25rem; }
+  .settings-section:last-child { margin-bottom: 0; }
+  .settings-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+  .tab-row {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 12px;
+  }
+  .tab {
+    font-size: 13px;
+    padding: 6px 14px;
+    cursor: pointer;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+    user-select: none;
+  }
+  .tab:hover { color: var(--text-sub); }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+  .api-key-row { display: flex; gap: 10px; align-items: center; }
+  .api-key-row input { flex: 1; font-family: 'Menlo','Monaco',monospace; font-size: 13px; }
+  .model-info {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-hint);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .model-info span {
+    background: var(--border-light);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'Menlo','Monaco',monospace;
+    font-size: 11px;
+    color: var(--text-sub);
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border-light);
+    margin: 1rem 0;
+  }
+
+  .guide-toggle {
+    font-size: 13px;
+    color: var(--accent);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    padding: 0;
+    margin-top: 10px;
+    display: block;
+  }
+  .guide-toggle:hover { text-decoration: underline; }
+  .guide-box {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px 18px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.9;
+    display: none;
+  }
+  .guide-box b { color: var(--text); font-weight: 600; }
+  .guide-box code {
+    font-family: 'Menlo', 'Monaco', monospace;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11.5px;
+  }
+  .code-block-wrap { position: relative; margin: 10px 0; }
+  .code-block {
+    font-family: 'Menlo', 'Monaco', monospace;
+    font-size: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    overflow-x: auto;
+    white-space: pre;
+    max-height: 200px;
+    line-height: 1.6;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+  .sheet-status { font-size: 13px; margin-top: 6px; }
+  .sheet-status.ok    { color: var(--green-text); }
+  .sheet-status.error { color: var(--red-text); }
+  .sheet-status.info  { color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<!-- Dark Header -->
+<div class="top-header">
+  <h1>Stayfolio 콘텐츠 생성기</h1>
+  <p>숙소 이름을 넣으면 스테이폴리오 스타일 소개 콘텐츠를 자동으로 만들어요</p>
+</div>
+
+<div class="container">
+
+  <!-- API Key Bar -->
+  <div class="apikey-bar">
+    <span class="apikey-label">API Key</span>
+    <select id="providerSelect" onchange="switchProvider(this.value)">
+      <option value="claude">Claude</option>
+      <option value="gpt">GPT</option>
+    </select>
+    <input type="password" id="apiKeyInline" placeholder="sk-ant-api03-..." oninput="saveKeyInline()" />
+    <span class="key-status" id="keyStatusInline"></span>
+    <button class="btn-show" id="toggleKeyBtn" onclick="toggleKeyVisibility()">보기</button>
+  </div>
+  <p class="apikey-hint" id="apiKeyHint">
+    Anthropic API 키가 필요합니다. 키는 브라우저와 로컬스토리지에만 저장됩니다. <a href="https://console.anthropic.com/settings/keys" target="_blank" id="keyLink">키 발급받기 →</a>
+  </p>
+
+  <!-- Main Card -->
+  <div class="card">
+    <div class="card-label">숙소 정보</div>
+    <div class="hotel-input-row">
+      <input type="text" id="hotelInput" placeholder="예: 드라솔 사파 센트럴 부티크 호텔" />
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span class="hint" style="margin:0;">콤마(,) 또는 줄바꿈으로 여러 숙소 입력</span>
+      <button class="file-upload-link" onclick="toggleCsv()">파일 업로드 (CSV/Excel)</button>
+    </div>
+    <div class="file-area" id="csvArea">
+      <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" onchange="handleFile(this)" />
+      <p class="file-status" id="fileStatus">첫 번째 열에 숙소명이 있는 CSV 또는 Excel 파일</p>
+    </div>
+
+    <div class="options-row">
+      <button class="btn btn-primary" id="runBtn" onclick="startGeneration()">콘텐츠 생성</button>
+      <button class="btn btn-ghost" id="stopBtn" onclick="stopGeneration()" style="display:none;">중지</button>
+      <div style="flex:1;"></div>
+      <button class="section-toggle" onclick="toggleSettings()">
+        <span class="arrow" id="settingsArrow">▶</span> 설정 (Sheets 연동)
+      </button>
+    </div>
+  </div>
+
+  <!-- Settings (collapsed) -->
+  <div class="collapse-area" id="settingsPanel">
+    <div class="card">
+      <!-- Provider detail (hidden, managed by inline bar) -->
+      <div id="provider-claude" style="display:none;">
+        <div class="api-key-row">
+          <input type="password" id="apiKey" />
+          <span class="key-status" id="keyStatus"></span>
+        </div>
+      </div>
+      <div id="provider-gpt" style="display:none;">
+        <div class="api-key-row">
+          <input type="password" id="openaiKey" />
+          <span class="key-status" id="openaiKeyStatus"></span>
+        </div>
+      </div>
+      <div class="model-info" style="margin-top:0;margin-bottom:14px;">
+        모델: <span id="modelName">claude-sonnet-4-20250514 (웹 검색 포함)</span>
+      </div>
+
+      <hr class="divider" style="margin-top:0;">
+
+      <div class="settings-section">
+        <div class="settings-label">Google Sheets 연동 <span style="font-weight:400;text-transform:none;letter-spacing:0;">(선택)</span></div>
+        <div class="row">
+          <input type="text" id="sheetUrl" placeholder="Apps Script 웹훅 URL" />
+          <button class="btn btn-ghost" onclick="testWebhook()">테스트</button>
+        </div>
+        <p class="sheet-status info" id="sheetStatus"></p>
+        <button class="guide-toggle" onclick="toggleGuide()">Apps Script 설정 방법 보기</button>
+        <div class="guide-box" id="guideBox">
+          <b>① 구글 시트에서 Apps Script 열기</b><br>
+          메뉴 → 확장 프로그램 → Apps Script<br><br>
+          <b>② 아래 코드 전체를 붙여넣고 저장</b>
+          <div class="code-block-wrap">
+            <pre class="code-block" id="gasCode">function doPost(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = JSON.parse(e.postData.contents);
+    var hotels = Array.isArray(data) ? data : [data];
+
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(["title","simple_desc","desc_1","desc_2",
+        "special_title_1","special_desc_1",
+        "special_title_2","special_desc_2",
+        "special_title_3","special_desc_3",
+        "status","timestamp"]);
+    }
+
+    hotels.forEach(function(h) {
+      sheet.appendRow([
+        h.title||"", h.simple_desc||"", h.desc_1||"", h.desc_2||"",
+        h.special_title_1||"", h.special_desc_1||"",
+        h.special_title_2||"", h.special_desc_2||"",
+        h.special_title_3||"", h.special_desc_3||"",
+        h.status||"ok", new Date().toISOString()
+      ]);
+    });
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ok:true}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ok:false,error:err.message}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  return ContentService
+    .createTextOutput(JSON.stringify({ok:true,msg:"active"}))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+            <button class="btn btn-ghost copy-btn" onclick="copyCode()">복사</button>
+          </div>
+          <b>③ 배포 → 새 배포 → 웹 앱</b><br>
+          실행 계정: <code>나</code> / 액세스: <code>모든 사용자</code><br><br>
+          <b>④ 배포 URL을 위 입력창에 붙여넣기</b>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt (collapsed) -->
+  <div style="margin-bottom:1rem;">
+    <div class="card" style="padding:12px 18px;">
+      <button class="section-toggle" onclick="togglePrompt()">
+        <span class="arrow" id="promptArrow">▶</span> 프롬프트 편집
+      </button>
+      <div class="collapse-area" id="promptArea">
+        <div style="margin-top:12px;">
+          <textarea id="promptEditor" style="min-height:200px;font-size:13px;line-height:1.8;"></textarea>
+          <div style="margin-top:8px;display:flex;gap:10px;align-items:center;justify-content:space-between;">
+            <span class="hint" style="margin:0;"><code style="font-family:'Menlo','Monaco',monospace;background:var(--border-light);padding:1px 5px;border-radius:3px;font-size:11px;">__HOTEL__</code> 자리에 숙소 이름이 들어가요</span>
+            <button class="btn btn-ghost" onclick="resetPrompt()" style="flex-shrink:0;">기본값으로 되돌리기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap" id="progressWrap" style="display:none;">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <p class="progress-text" id="progressText"></p>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions" id="actionsBar" style="display:none;">
+    <button class="btn btn-ghost" id="dlBtn" onclick="downloadJSON()">JSON 다운로드</button>
+    <button class="btn btn-ghost" id="clrBtn" onclick="clearResults()">초기화</button>
+    <span class="summary" id="summary"></span>
+  </div>
+
+  <!-- Results -->
+  <div class="card" id="resultsCard" style="display:none;">
+    <div class="result-tabs">
+      <button class="result-tab active" onclick="switchResultTab('status')">진행 현황</button>
+      <button class="result-tab" onclick="switchResultTab('content')">콘텐츠 보기</button>
+    </div>
+    <div id="statusView" class="content-view active">
+      <div class="result-list" id="resultList"></div>
+    </div>
+    <div id="contentView" class="content-view">
+      <div id="contentList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var allResults = JSON.parse(localStorage.getItem('stayfolio_results') || '[]');
+  var stopFlag = false;
+  var fileHotels = [];
+  var currentTab = 'text';
+  var currentProvider = 'claude';
+  var guideOpen = false;
+  var csvOpen = false;
+  var promptOpen = false;
+  var settingsOpen = false;
+  var resultTab = 'status';
+  var keyVisible = false;
+
+  var DEFAULT_PROMPT = `[Persona]
+당신은 [스테이폴리오(Stayfolio)] 스타일의 감성적인 숙소 소개 콘텐츠를 작성하는 전문 에디터입니다. 단순한 정보 나열을 넘어, 그 공간만이 가진 독보적인 한 끝(Detail)을 포착하여 독자에게 그곳에서의 '장면'을 선물합니다.
+
+[Research & Fact Check Process]
+작성 전, 반드시 다음 단계를 거쳐 정보를 수집하세요.
+공식 홈페이지 우선: 해당 호텔의 공식 웹사이트에서 시설의 정식 명칭(Official Name)을 확인합니다.
+명칭 원칙: 공식 국문 명칭이 있다면 '한글(영어)' 형식을 유지합니다. 공식 국문 명칭이 없거나 불확실하면 임의로 번역하지 말고 '영어' 명칭을 그대로 사용합니다.
+일반론 금지: "아름다운 전망", "최고의 서비스" 같은 표현 대신, "몇 층에 위치한 어느 방향의 뷰인지", "어떤 브랜드의 어메니티를 사용하는지" 등 고유한 수치나 브랜드를 반드시 포함합니다.
+
+[Tone & Manner]
+어조: 다정하고 세련된 '~어요/아요'체를 사용합니다.
+경험 제안: '~해 보세요', '~를 추천드려요'와 같이 담백한 권유형 문장을 사용합니다.
+묘사: 시각, 후각, 촉각 등 감각적인 어휘를 사용하여 공간의 온도를 전달합니다.
+
+[Writing Guidelines]
+Hallucination Zero: 확인되지 않은 시설 정보를 지어내지 마세요.
+Special Title 전략: [공간의 정체성 + 핵심 행위]를 결합하되, 반드시 해당 호텔의 고유 명사(장소명)가 주는 분위기를 문장으로 녹여냅니다. 다만 고유 명사를 그대로 사용하지 않습니다.
+구체성 확보: 모든 문단에는 해당 숙소만이 가진 물리적 특징(층수, 특정 자재, 가구 브랜드, 시그니처 메뉴 이름 등)이 최소 하나 이상 포함되어야 합니다.
+이모지 금지: 텍스트에 이모지나 특수 기호를 절대 사용하지 마세요. 순수 텍스트만 출력합니다.
+
+[Output Format]
+반드시 JSON 형식으로만 출력하세요. 설명이나 주석은 추가하지 않습니다.
+title 필드에는 숙소의 공식 명칭만 적으세요. 감성 문구, 수식어, 부제를 절대 넣지 마세요. 예: "드라솔 사파 센트럴 부티크 호텔 (DeLaSol Sapa Central Boutique Hotel)"
+{"title":"{숙소 공식 이름 (영어 공식 이름)}","simple_desc":"{20자 내외 감성 요약}","desc_1":"{공간 첫인상 설명}","desc_2":"{객실 경험 설명}","special_title_1":"{매력 포인트 제목1}","special_desc_1":"{시설 경험 설명}","special_title_2":"{매력 포인트 제목2}","special_desc_2":"{시설 경험 설명}","special_title_3":"{매력 포인트 제목3}","special_desc_3":"{시설 경험 설명}"}
+
+지금 작성할 숙소: __HOTEL__`;
+
+  function getPrompt() {
+    return document.getElementById('promptEditor').value || DEFAULT_PROMPT;
+  }
+
+  function resetPrompt() {
+    document.getElementById('promptEditor').value = DEFAULT_PROMPT;
+  }
+
+  // Inline API Key management
+  function saveKeyInline() {
+    var v = document.getElementById('apiKeyInline').value.trim();
+    if (currentProvider === 'claude') {
+      document.getElementById('apiKey').value = v;
+      updateKeyStatusInline(v, 'claude');
+      localStorage.setItem('sf_claude_key', v);
+    } else {
+      document.getElementById('openaiKey').value = v;
+      updateKeyStatusInline(v, 'gpt');
+      localStorage.setItem('sf_openai_key', v);
+    }
+  }
+
+  function updateKeyStatusInline(v, provider) {
+    var el = document.getElementById('keyStatusInline');
+    if (!v) { el.textContent = ''; el.className = 'key-status'; return; }
+    var valid = provider === 'claude' ? v.startsWith('sk-ant-') : v.startsWith('sk-');
+    if (valid) {
+      el.textContent = '✓';
+      el.className = 'key-status ok';
+    } else {
+      el.textContent = '형식 확인';
+      el.className = 'key-status error';
+    }
+  }
+
+  function toggleKeyVisibility() {
+    keyVisible = !keyVisible;
+    var input = document.getElementById('apiKeyInline');
+    input.type = keyVisible ? 'text' : 'password';
+    document.getElementById('toggleKeyBtn').textContent = keyVisible ? '숨기기' : '보기';
+  }
+
+  // Legacy key functions (keep for compatibility)
+  function saveKey() { }
+  function saveOpenaiKey() { }
+  function updateKeyStatus(v) {
+    var el = document.getElementById('keyStatus');
+    if (!v) { el.textContent = ''; return; }
+    el.textContent = v.startsWith('sk-ant-') ? '✓' : '';
+    el.className = 'key-status ' + (v.startsWith('sk-ant-') ? 'ok' : 'error');
+  }
+  function updateOpenaiKeyStatus(v) {
+    var el = document.getElementById('openaiKeyStatus');
+    if (!v) { el.textContent = ''; return; }
+    el.textContent = v.startsWith('sk-') ? '✓' : '';
+    el.className = 'key-status ' + (v.startsWith('sk-') ? 'ok' : 'error');
+  }
+
+  // Toggle functions
+  function toggleSettings() {
+    settingsOpen = !settingsOpen;
+    document.getElementById('settingsPanel').classList.toggle('open', settingsOpen);
+    document.getElementById('settingsArrow').classList.toggle('open', settingsOpen);
+  }
+
+  function togglePrompt() {
+    promptOpen = !promptOpen;
+    document.getElementById('promptArea').classList.toggle('open', promptOpen);
+    document.getElementById('promptArrow').classList.toggle('open', promptOpen);
+  }
+
+  function toggleCsv() {
+    csvOpen = !csvOpen;
+    document.getElementById('csvArea').classList.toggle('open', csvOpen);
+    if (csvOpen) currentTab = 'file';
+    else if (!fileHotels.length) currentTab = 'text';
+  }
+
+  function switchProvider(p) {
+    currentProvider = p;
+    document.getElementById('providerSelect').value = p;
+    // Swap inline key
+    var inlineInput = document.getElementById('apiKeyInline');
+    if (p === 'claude') {
+      inlineInput.value = document.getElementById('apiKey').value;
+      inlineInput.placeholder = 'sk-ant-api03-...';
+      document.getElementById('keyLink').href = 'https://console.anthropic.com/settings/keys';
+      document.getElementById('apiKeyHint').firstChild.textContent = 'Anthropic API 키가 필요합니다. 키는 브라우저와 로컬스토리지에만 저장됩니다. ';
+    } else {
+      inlineInput.value = document.getElementById('openaiKey').value;
+      inlineInput.placeholder = 'sk-...';
+      document.getElementById('keyLink').href = 'https://platform.openai.com/api-keys';
+      document.getElementById('apiKeyHint').firstChild.textContent = 'OpenAI API 키가 필요합니다. 키는 브라우저와 로컬스토리지에만 저장됩니다. ';
+    }
+    updateKeyStatusInline(inlineInput.value, p);
+    document.getElementById('modelName').textContent = p === 'claude'
+      ? 'claude-sonnet-4-20250514 (웹 검색 포함)'
+      : 'gpt-4o';
+  }
+
+  // Load saved config
+  window.onload = async function() {
+    try {
+      var claudeKey = localStorage.getItem('sf_claude_key') || '';
+      var openaiKey = localStorage.getItem('sf_openai_key') || '';
+      var sheetUrl  = localStorage.getItem('sf_sheet_url') || '';
+      if (claudeKey) { document.getElementById('apiKey').value = claudeKey; }
+      if (openaiKey) { document.getElementById('openaiKey').value = openaiKey; }
+      if (sheetUrl)  { document.getElementById('sheetUrl').value = sheetUrl; }
+      var inlineInput = document.getElementById('apiKeyInline');
+      if (currentProvider === 'claude' && claudeKey) {
+        inlineInput.value = claudeKey;
+        updateKeyStatusInline(claudeKey, 'claude');
+      } else if (currentProvider === 'gpt' && openaiKey) {
+        inlineInput.value = openaiKey;
+        updateKeyStatusInline(openaiKey, 'gpt');
+      }
+      document.getElementById('promptEditor').value = DEFAULT_PROMPT;
+    } catch(e) {}
+    // 저장된 결과 복원
+    if (allResults.length) {
+      document.getElementById('resultsCard').style.display = '';
+      document.getElementById('actionsBar').style.display = '';
+      var successCount = allResults.filter(function(r){ return r.title && !r.error; }).length;
+      var errorCount = allResults.filter(function(r){ return r.error; }).length;
+      document.getElementById('summary').textContent = '성공 ' + successCount + '개 · 오류 ' + errorCount + '개';
+      renderContentView();
+    }
+  };
+
+  var headerPattern = /^(숙소|호텔|name|hotel|이름|숙소명|호텔명|accommodation)/i;
+
+  function loadHotelsFromRows(rows) {
+    if (rows.length > 1 && headerPattern.test(String(rows[0][0] || '').trim())) {
+      rows = rows.slice(1);
+    }
+    fileHotels = rows.map(function(r){ return String(r[0] || '').trim(); }).filter(Boolean);
+    document.getElementById('fileStatus').textContent = fileHotels.length + '개 숙소 로드됨: ' + fileHotels.slice(0,3).join(', ') + (fileHotels.length > 3 ? ' 외 '+(fileHotels.length-3)+'개' : '');
+    currentTab = 'file';
+  }
+
+  function handleFile(input) {
+    var file = input.files[0];
+    if (!file) return;
+    var ext = file.name.split('.').pop().toLowerCase();
+
+    if (ext === 'xlsx' || ext === 'xls') {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var wb = XLSX.read(e.target.result, { type: 'array' });
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        loadHotelsFromRows(rows);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var text = e.target.result;
+        if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+        var rows = text.split(/\r?\n/).map(function(l){
+          return [l.split(',')[0].trim().replace(/^["']|["']$/g, '')];
+        });
+        loadHotelsFromRows(rows);
+      };
+      reader.readAsText(file, 'utf-8');
+    }
+  }
+
+  function getHotels() {
+    if (currentTab === 'file' && fileHotels.length) return fileHotels;
+    return document.getElementById('hotelInput').value
+      .split(/[,\n]/).map(function(s){ return s.trim(); }).filter(Boolean);
+  }
+
+  function toggleGuide() {
+    guideOpen = !guideOpen;
+    document.getElementById('guideBox').style.display = guideOpen ? '' : 'none';
+  }
+
+  function copyCode() {
+    navigator.clipboard.writeText(document.getElementById('gasCode').textContent).then(function(){
+      var btn = document.querySelector('.copy-btn');
+      btn.textContent = '복사됨 ✓';
+      setTimeout(function(){ btn.textContent = '복사'; }, 1800);
+    });
+  }
+
+  async function testWebhook() {
+    var url = document.getElementById('sheetUrl').value.trim();
+    if (!url) { setSheetStatus('URL을 먼저 입력해 주세요', 'error'); return; }
+    localStorage.setItem('sf_sheet_url', url);
+    setSheetStatus('테스트 중...', 'info');
+    try {
+      await fetch(url, { method: 'GET', mode: 'no-cors' });
+      setSheetStatus('연결 OK — 생성 시 데이터가 자동으로 들어가요', 'ok');
+    } catch(e) {
+      setSheetStatus('연결 실패: ' + e.message, 'error');
+    }
+  }
+
+  function setSheetStatus(msg, type) {
+    var el = document.getElementById('sheetStatus');
+    el.textContent = msg;
+    el.className = 'sheet-status ' + type;
+  }
+
+  async function callAPI(apiKey, messages) {
+    var resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: apiKey,
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: messages
+      })
+    });
+    if (!resp.ok) {
+      var err = await resp.json().catch(function(){ return {}; });
+      throw new Error(err.error ? err.error.message : 'API error ' + resp.status);
+    }
+    return await resp.json();
+  }
+
+  async function callClaude(hotel) {
+    var apiKey = document.getElementById('apiKey').value.trim();
+    if (!apiKey) throw new Error('API 키를 입력해 주세요');
+
+    var messages = [{ role: 'user', content: getPrompt().replace('__HOTEL__', hotel) }];
+
+    for (var i = 0; i < 5; i++) {
+      var data = await callAPI(apiKey, messages);
+
+      if (data.type === 'error') {
+        var errMsg = data.error ? (data.error.message || data.error.type || JSON.stringify(data.error)) : 'API 오류';
+        throw new Error(errMsg);
+      }
+
+      var stopReason = data.stop_reason;
+
+      if (!stopReason && data.content && data.content.length) {
+        var hasText = data.content.some(function(b){ return b.type === 'text'; });
+        var hasToolUse = data.content.some(function(b){ return b.type === 'tool_use'; });
+        if (hasToolUse) stopReason = 'tool_use';
+        else if (hasText) stopReason = 'end_turn';
+      }
+
+      if (stopReason === 'end_turn' || stopReason === 'max_tokens') {
+        var text = data.content
+          .filter(function(b){ return b.type === 'text'; })
+          .map(function(b){ return b.text; })
+          .join('');
+        if (text) {
+          var clean = text.replace(/<cite[^>]*>|<\/cite>/g, '');
+          clean = clean.replace(/```json[\s\S]*?```/g, function(m){ return m.slice(7, -3); }).replace(/```/g,'').trim();
+          var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+          if (s !== -1 && e !== -1) {
+            return stripCiteTags(JSON.parse(clean.slice(s, e + 1)));
+          }
+        }
+        if (stopReason === 'max_tokens') {
+          messages.push({ role: 'assistant', content: data.content });
+          messages.push({ role: 'user', content: 'JSON 출력이 잘렸습니다. 완전한 JSON을 다시 출력해 주세요.' });
+          continue;
+        }
+        throw new Error('JSON을 찾을 수 없어요 (응답: ' + (text || '').slice(0,100) + ')');
+      }
+
+      if (stopReason === 'tool_use') {
+        messages.push({ role: 'assistant', content: data.content });
+        var toolResults = data.content
+          .filter(function(b){ return b.type === 'tool_use'; })
+          .map(function(b){
+            return {
+              type: 'tool_result',
+              tool_use_id: b.id,
+              content: b.type === 'web_search' ? (b.content || '') : ''
+            };
+          });
+        messages.push({ role: 'user', content: toolResults });
+        continue;
+      }
+
+      throw new Error('예상치 못한 응답: stop_reason=' + (data.stop_reason || 'undefined') + ' (응답: ' + JSON.stringify(data).slice(0,200) + ')');
+    }
+
+    throw new Error('최대 반복 횟수 초과');
+  }
+
+  async function callGPT(hotel) {
+    var apiKey = document.getElementById('openaiKey').value.trim();
+    if (!apiKey) throw new Error('OpenAI API 키를 입력해 주세요');
+
+    var prompt = getPrompt().replace('__HOTEL__', hotel);
+    var resp = await fetch('/api/generate-openai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: apiKey,
+        model: 'gpt-4o',
+        max_completion_tokens: 1500,
+        messages: [
+          { role: 'system', content: prompt },
+          { role: 'user', content: '지금 작성할 숙소: ' + hotel }
+        ]
+      })
+    });
+    if (!resp.ok) {
+      var err = await resp.json().catch(function(){ return {}; });
+      throw new Error(err.error ? (err.error.message || err.error) : 'API error ' + resp.status);
+    }
+    var data = await resp.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    var text = data.choices[0].message.content;
+    var clean = text.replace(/```json[\s\S]*?```/g, function(m){ return m.slice(7, -3); }).replace(/```/g,'').trim();
+    var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+    if (s === -1 || e === -1) throw new Error('JSON을 찾을 수 없어요 (응답: ' + text.slice(0,100) + ')');
+    return JSON.parse(clean.slice(s, e + 1));
+  }
+
+  function containsHotelName(title, hotel) {
+    var t = title.toLowerCase().replace(/[\s\-()（）]/g, '');
+    var hotelClean = hotel.toLowerCase().replace(/[\s\-()（）]/g, '');
+    if (hotelClean.length <= 2) return t.indexOf(hotelClean) !== -1;
+    var prefix = hotelClean.slice(0, Math.min(hotelClean.length, 4));
+    return t.indexOf(prefix) !== -1;
+  }
+
+  function stripCiteTags(obj) {
+    var citeRegex = /<cite[^>]*>|<\/cite>/g;
+    for (var key in obj) {
+      if (typeof obj[key] === 'string') {
+        obj[key] = obj[key].replace(citeRegex, '').replace(/\s{2,}/g, ' ').trim();
+      }
+    }
+    return obj;
+  }
+
+  function sanitizeForSheet(obj) {
+    var emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}\u{2702}-\u{27B0}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2300}-\u{23FF}\u{2B50}\u{2B55}\u{231A}-\u{231B}\u{25AA}-\u{25FE}\u{2934}-\u{2935}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}]/gu;
+    var clean = {};
+    for (var key in obj) {
+      if (typeof obj[key] === 'string') {
+        clean[key] = obj[key].replace(emojiRegex, '').replace(/\s{2,}/g, ' ').trim();
+      } else {
+        clean[key] = obj[key];
+      }
+    }
+    return clean;
+  }
+
+  async function sendToSheet(row) {
+    var sheetUrl = document.getElementById('sheetUrl').value.trim();
+    if (!sheetUrl) return;
+    try {
+      await fetch('/api/send-sheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheetUrl: sheetUrl, data: [sanitizeForSheet(row)] })
+      });
+    } catch(e) { console.warn('Sheet error:', e); }
+  }
+
+  function switchResultTab(tab) {
+    resultTab = tab;
+    document.getElementById('statusView').classList.toggle('active', tab === 'status');
+    document.getElementById('contentView').classList.toggle('active', tab === 'content');
+    var tabs = document.querySelectorAll('.result-tab');
+    tabs[0].classList.toggle('active', tab === 'status');
+    tabs[1].classList.toggle('active', tab === 'content');
+    if (tab === 'content') renderContentView();
+  }
+
+  function renderContentView() {
+    var container = document.getElementById('contentList');
+    var successResults = allResults.filter(function(r){ return r.title && !r.error; });
+    if (!successResults.length) {
+      container.innerHTML = '<div class="content-empty">생성 완료된 콘텐츠가 없습니다</div>';
+      return;
+    }
+    container.innerHTML = successResults.map(buildContentCardHtml).join('');
+  }
+
+  function buildContentCardHtml(r) {
+    var html = '<div class="content-card">';
+    html += '<div class="content-card-header">';
+    html += '<div class="content-card-title">' + escapeHtml(r.title || '') + '</div>';
+    if (r.simple_desc) html += '<div class="content-card-simple">' + escapeHtml(r.simple_desc) + '</div>';
+    html += '</div>';
+    html += '<div class="content-card-body">';
+    if (r.desc_1) html += '<div class="content-card-desc">' + escapeHtml(r.desc_1) + '</div>';
+    if (r.desc_2) html += '<div class="content-card-desc">' + escapeHtml(r.desc_2) + '</div>';
+    var specials = [];
+    if (r.special_title_1) specials.push({ t: r.special_title_1, d: r.special_desc_1 || '' });
+    if (r.special_title_2) specials.push({ t: r.special_title_2, d: r.special_desc_2 || '' });
+    if (r.special_title_3) specials.push({ t: r.special_title_3, d: r.special_desc_3 || '' });
+    if (specials.length) {
+      html += '<div class="content-card-specials">';
+      specials.forEach(function(s) {
+        html += '<div class="content-special">';
+        html += '<div class="content-special-title">' + escapeHtml(s.t) + '</div>';
+        html += '<div class="content-special-desc">' + escapeHtml(s.d) + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function appendContentCard(r) {
+    if (!r.title || r.error) return;
+    var container = document.getElementById('contentList');
+    // 빈 상태 메시지 제거
+    var empty = container.querySelector('.content-empty');
+    if (empty) empty.remove();
+    container.insertAdjacentHTML('beforeend', buildContentCardHtml(r));
+  }
+
+  function saveResults() {
+    localStorage.setItem('stayfolio_results', JSON.stringify(allResults));
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function renderRow(hotel, status, data) {
+    var id = 'r_' + encodeURIComponent(hotel).replace(/%/g,'_');
+    var badgeClass = {waiting:'badge-wait',running:'badge-run',done:'badge-done',error:'badge-error'}[status];
+    var badgeText  = {waiting:'대기',running:'생성중',done:'완료',error:'오류'}[status];
+    var preview = '';
+    if (status==='done' && data) {
+      preview = '<div class="simple-desc">' + (data.simple_desc||'') + '</div>' +
+                '<div>' + (data.title||'') + '</div>';
+    } else if (status==='error' && data) {
+      preview = '<div class="error-msg">' + data + '</div>';
+    }
+    var html = '<div class="result-row" id="' + id + '">' +
+      '<div class="result-name">' + hotel + '</div>' +
+      '<div class="result-status"><span class="badge ' + badgeClass + '">' + badgeText + '</span></div>' +
+      '<div class="result-preview">' + preview + '</div>' +
+      '</div>';
+    var existing = document.getElementById(id);
+    if (existing) existing.outerHTML = html;
+    else document.getElementById('resultList').insertAdjacentHTML('beforeend', html);
+  }
+
+  async function startGeneration() {
+    var hotels = getHotels();
+    if (!hotels.length) { alert('숙소 이름을 입력해 주세요'); return; }
+    var apiKey = currentProvider === 'claude'
+      ? document.getElementById('apiKey').value.trim()
+      : document.getElementById('openaiKey').value.trim();
+    if (!apiKey) { alert('API 키를 먼저 입력해 주세요'); return; }
+
+    stopFlag = false;
+    document.getElementById('resultList').innerHTML = '';
+    document.getElementById('resultsCard').style.display = '';
+    switchResultTab('status');
+    document.getElementById('progressWrap').style.display = '';
+    document.getElementById('runBtn').disabled = true;
+    document.getElementById('stopBtn').style.display = '';
+    document.getElementById('actionsBar').style.display = 'none';
+    document.getElementById('summary').textContent = '';
+
+    hotels.forEach(function(h){ renderRow(h, 'waiting', null); });
+
+    var done = 0, errors = 0;
+    for (var i = 0; i < hotels.length; i++) {
+      if (stopFlag) break;
+      var hotel = hotels[i];
+      renderRow(hotel, 'running', null);
+      document.getElementById('progressFill').style.width = Math.round(i/hotels.length*100) + '%';
+      document.getElementById('progressText').textContent = (i+1) + ' / ' + hotels.length + ' 처리중...';
+
+      var result = null;
+      var maxRetries = 5;
+      for (var attempt = 0; attempt < maxRetries; attempt++) {
+        if (stopFlag) break;
+        try {
+          result = currentProvider === 'claude' ? await callClaude(hotel) : await callGPT(hotel);
+          break;
+        } catch(e) {
+          var isRateLimit = e.message && (e.message.indexOf('rate limit') !== -1 || e.message.indexOf('rate_limit') !== -1 || e.message.indexOf('overloaded') !== -1 || e.message.indexOf('529') !== -1);
+          if (isRateLimit && attempt < maxRetries - 1) {
+            var delaySec = Math.min(30 * Math.pow(2, attempt), 120);
+            for (var wait = delaySec; wait > 0; wait--) {
+              if (stopFlag) break;
+              document.getElementById('progressText').textContent = (i+1) + ' / ' + hotels.length + ' · Rate limit — ' + wait + '초 후 재시도 (' + (attempt+1) + '/' + maxRetries + ')';
+              await new Promise(function(r){ setTimeout(r, 1000); });
+            }
+            continue;
+          }
+          allResults.push({ title: hotel, error: e.message });
+          saveResults();
+          renderRow(hotel, 'error', e.message);
+          errors++;
+          result = null;
+          break;
+        }
+      }
+
+      if (stopFlag) break;
+      if (result) {
+        if (result.title && !containsHotelName(result.title, hotel)) {
+          result.title = hotel;
+        }
+        allResults.push(result);
+        saveResults();
+        renderRow(hotel, 'done', result);
+        appendContentCard(result);
+        done++;
+        await sendToSheet(result);
+      }
+    }
+
+    document.getElementById('progressFill').style.width = '100%';
+    document.getElementById('progressText').textContent = '완료';
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('stopBtn').style.display = 'none';
+    document.getElementById('actionsBar').style.display = '';
+    document.getElementById('summary').textContent = '성공 ' + done + '개 · 오류 ' + errors + '개';
+    if (resultTab === 'content') renderContentView();
+  }
+
+  function stopGeneration() {
+    stopFlag = true;
+    document.getElementById('stopBtn').style.display = 'none';
+    document.getElementById('runBtn').disabled = false;
+  }
+
+  function downloadJSON() {
+    var blob = new Blob([JSON.stringify(allResults, null, 2)], {type:'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'stayfolio_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+  }
+
+  function clearResults() {
+    allResults = [];
+    saveResults();
+    document.getElementById('resultList').innerHTML = '';
+    document.getElementById('contentList').innerHTML = '';
+    document.getElementById('resultsCard').style.display = 'none';
+    document.getElementById('progressWrap').style.display = 'none';
+    document.getElementById('actionsBar').style.display = 'none';
+    document.getElementById('summary').textContent = '';
+    document.getElementById('progressFill').style.width = '0%';
+    switchResultTab('status');
+  }
+</script>
+</body>
+</html>
